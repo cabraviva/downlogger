@@ -45,8 +45,8 @@ class Logger {
         // what about errors
         // try remove/comment this handler, 'exit' event still works
         process.on("uncaughtException", (err) => {
-        self.exitMsg(`Uncaught Exception: ${err.message}`);
-        process.exit(1);
+        self.exitMsg(`Uncaught Exception: ${err.message}`)
+        throw err
         });
     }
 
