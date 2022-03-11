@@ -13,7 +13,7 @@ class Logger {
                 self.info('WebServer is listening now')
             },
             middleWare: (req, res, next) => {
-                self.inContext('WebServer').info(`${req.method} ${req.url}`)
+                self.inContext('WebServer').info(`${req.method} ${req.url} from ${req.headers['x-forwarded-for'] || req.connection.remoteAddress}`)
 
                 next()
             }
