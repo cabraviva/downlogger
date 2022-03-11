@@ -1,0 +1,26 @@
+{
+  "name": "downlogger",
+  "version": "1.0.0",
+  "description": "A simple logger",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/greencoder001/downlogger.git"
+  },
+  "keywords": [
+    "log",
+    "logging",
+    "logdown",
+    "downlog",
+    "downlogger"
+  ],
+  "author": "Green_Lab",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/greencoder001/downlogger/issues"
+  },
+  "homepage": "https://github.com/greencoder001/downlogger#readme"
+}
