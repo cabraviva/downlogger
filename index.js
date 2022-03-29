@@ -2,9 +2,25 @@ const fs = require('fs')
 const humanDate = require('./human-date')
 
 class Logger {
-    constructor (consoleOutput = true) {
+    /**
+     * 
+     * @param {Boolean} consoleOutput Defines if everythin logged should also be displayed in the console
+     * @param {Number} logBufferOverflow Sets the maximum lines of logBuffer before it is written to the file
+     * @param {Number} overflowTimeout Sets the time in milliseconds after which the logBuffer is written to the file
+     * @param {Boolean} synchronous Sets if the logBuffer should be written to the file synchronously or asynchronously
+     */
+    constructor (consoleOutput = true, logBufferOverflow = 100, overflowTimeout = 'TIMEOUT_3_MINUTES', synchronous = true) {
+        if (overflowTimeout === 'TIMEOUT_3_MINUTES') {
+            overflowTimeout = 1000 * 60 * 3
+        }
+
+        this.overflowTimeout = overflowTimeout
+        
         this.consoleOutput = consoleOutput
+        this.synchronous = synchronous
         this.files = []
+        this.logBufferOverflow = logBufferOverflow < 0 ? 100 : logBufferOverflow
+        this.logBuffer = [] // Store lines to log until logBufferOverflow is reached
 
         const self = this
 
@@ -19,37 +35,39 @@ class Logger {
             }
         }
 
-        process.on("beforeExit", (code) => {
-        self.exitMsg("Process beforeExit event with code: ", code || 'unknown');
-        });
+        setInterval(() => {
+            this._writeToFile()
+        }, overflowTimeout)
+
+        process.on('beforeExit', (code) => {
+            self.exitMsg('Process beforeExit event with code: ', code || 'unknown')
+        })
 
         // only works when the process normally exits
         // on windows, ctrl-c will not trigger this handler (it is unnormal)
         // unless you listen on 'SIGINT'
-        process.on("exit", (code) => {
-        self.exitMsg("Process exit event with code: ", code || 'unknown');
-        });
+        process.on('exit', (code) => {
+            self.exitMsg('Process exit event with code: ', code || 'unknown')
+        })
 
         // just in case some user like using "kill"
-        process.on("SIGTERM", (signal) => {
-        self.exitMsg(`Process ${process.pid} received a SIGTERM signal`);
-        process.exit(0);
-        });
+        process.on('SIGTERM', (signal) => {
+            self.exitMsg(`Process ${process.pid} received a SIGTERM signal`)
+            process.exit(0)
+        })
 
         // catch ctrl-c, so that event 'exit' always works
-        process.on("SIGINT", (signal) => {
-        self.exitMsg(`Process ${process.pid} has been interrupted`);
-        process.exit(0);
-        });
-
-        // what about errors
-        // try remove/comment this handler, 'exit' event still works
-        process.on("uncaughtException", (err) => {
-        self.exitMsg(`Uncaught Exception: ${err.message}`)
-        throw err
-        });
+        process.on('SIGINT', (signal) => {
+            self.exitMsg(`Process ${process.pid} has been interrupted`)
+            process.exit(0)
+        })
     }
 
+    /**
+     * 
+     * @param {String} context Execution context name
+     * @returns {Logger}
+     */
     inContext (context) {
         const self = this
         return {
@@ -59,30 +77,61 @@ class Logger {
         }
     }
 
+    /**
+     * @description Logs a message to the console and to the file
+     * @param {*} message Object to log
+     */
     info (message) {
         this._onChange(`[${humanDate()}: INFO] ${message}`)
     }
 
+    /**
+     * @description Logs an exit-message to the console and to the file (this should only be used if the process is about to exit)
+     * @param {*} message Exit Message
+     */
     exitMsg (message) {
         this._onChangeSync(`[${humanDate()}: EXIT] ${message}`)
     }
 
+    /**
+     * @description Logs a debug-message to the console and to the file (this should only be used for debugging purposes)
+     * @param {*} message Object to log
+     */
     debug (message) {
         this._onChange(`[${humanDate()}: DEBUG] ${message}`)
     }
 
+    /**
+     * @description Logs a warning to the console and to the file
+     * @param {*} message Object to log
+     */
     warn (message) {
         this._onChange(`[${humanDate()}: WARN] ${message}`)
     }
 
+    /**
+     * @description Logs an error to the console and to the file
+     * @param {*} message Object to log
+     */
     error (message) {
         this._onChange(`[${humanDate()}: ERROR] ${message}`)
     }
 
+    /**
+     * @description Logs an error to the console and to the file and logs the stacktrace to the console and to the file
+     * @param {*} message Object to log
+     */
     throw (error) {
+        console.error(error)
         this._onChange(`[${humanDate()}: ERROR] ${error.name}: ${error.message}`)
+        // Add stacktrace as an extra line
+        this._onChange(`[${humanDate()}: ERRORSTACK] ${error.stack}`)
     }
 
+    /**
+     * @description Intsantly Logs a message to the console and to the file (WARNING: This will block the process)
+     * @param {*} message Object to log
+     */
     print (...messages) {
         console.log(...messages)
         this.files.forEach(file => {
@@ -90,6 +139,10 @@ class Logger {
         })
     }
 
+    /**
+     * @description Instantly logs a message to the console and to the file (WARNING: This will block the process)
+     * @param {*} message Object to log
+     */
     printr (...messages) {
         console.log(...messages)
         this.files.forEach(file => {
@@ -97,22 +150,58 @@ class Logger {
         })
     }
 
+    /**
+     * @description Instantly logs a message into just the file (WARNING: This will block the process)
+     * @param {*} message Object to log
+     */
     printrf (...messages) {
         this.files.forEach(file => {
             fs.appendFileSync(file, `${messages.join(' ')}\n`, () => {})
         })
     }
 
+    /**
+     * @description Internal function to log a message to the console and to the file
+     * @warning This function is only for internal use
+     * @param {*} line 
+     */
     _onChange (line) {
         if (this.consoleOutput) {
             console.log(line)
         }
 
+        // Buffer output
+        this.logBuffer.push(line)
+        if (this.logBuffer.length > this.logBufferOverflow) {
+            this._writeToFile()
+        }
+    }
+
+    /**
+     * @description Internal function to write the buffer to the file
+     * @warning This function is only for internal use
+     * @param {*} line 
+     */
+    _writeToFile () {
+        const self = this
+        const linez = this.logBuffer.join('\n') // Concat all lines
+
+        this.logBuffer = [] // Reset buffer
+
         this.files.forEach(file => {
-            fs.appendFileSync(file, `${line}\n`)
+            if (self.synchronous) {
+                fs.appendFileSync(file, `${linez}\n`)
+            } else {
+                fs.appendFile(file, `${linez}\n`, () => {})
+            }
         })
     }
 
+    /**
+     * @description Internal function to log a message to the console and to the file (WARNING: This will block the process)
+     * @warning This function is only for internal use
+     * @param {*} line 
+     */
     _onChangeSync (line) {
         if (this.consoleOutput) {
             console.log(line)
@@ -123,6 +212,17 @@ class Logger {
         })
     }
 
+    /**
+     * @description Manually writes the log buffer to the file
+     */
+    writeNow () {
+        this._writeToFile()
+    }
+
+    /**
+     * @description Pipes the logs into a file
+     * @param {String} file Filepath for the logfile
+     */
     pipe (file) {
         const os = require('os')
 
@@ -130,7 +230,7 @@ class Logger {
         this.printrf()
         this.printrf()
         this.printrf('------------------------------------------------------------')
-        this.printrf(`---- NEW LOGGING SESSION STARTED at ${humanDate()} ----`)
+        this.printrf(`-- NEW LOGGING SESSION STARTED at ${humanDate()}`)
         this.printrf(`-- Logging to ${file}`)
         this.printrf(`-- CWD: ${process.cwd()}`)
         this.printrf(`-- OS: ${os.platform()} ${os.arch()}`)
