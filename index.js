@@ -32,6 +32,11 @@ class Logger {
                 self.inContext('WebServer').info(`${req.method} ${req.url} from ${req.headers['x-forwarded-for'] || req.connection.remoteAddress}`)
 
                 next()
+            },
+            onlyFileMiddleware: (req, res, next) => {
+                self.inFileContext('WebServer').info(`${req.method} ${req.url} from ${req.headers['x-forwarded-for'] || req.connection.remoteAddress}`)
+
+                next()
             }
         }
 
@@ -40,6 +45,7 @@ class Logger {
         }, overflowTimeout)
 
         process.on('beforeExit', (code) => {
+            this._writeBufferSync()
             self.exitMsg('Process beforeExit event with code: ', code || 'unknown')
         })
 
@@ -47,17 +53,20 @@ class Logger {
         // on windows, ctrl-c will not trigger this handler (it is unnormal)
         // unless you listen on 'SIGINT'
         process.on('exit', (code) => {
+            this._writeBufferSync()
             self.exitMsg('Process exit event with code: ', code || 'unknown')
         })
 
         // just in case some user like using "kill"
         process.on('SIGTERM', (signal) => {
+            this._writeBufferSync()
             self.exitMsg(`Process ${process.pid} received a SIGTERM signal`)
             process.exit(0)
         })
 
         // catch ctrl-c, so that event 'exit' always works
         process.on('SIGINT', (signal) => {
+            this._writeBufferSync()
             self.exitMsg(`Process ${process.pid} has been interrupted`)
             process.exit(0)
         })
@@ -78,11 +87,37 @@ class Logger {
     }
 
     /**
+     * @description Same as inContext but doesn't log to the console
+     * @param {String} context Execution context name
+     * @returns {Logger}
+     */
+    inFileContext (context) {
+        const self = this
+        return {
+            info: (message) => {
+                self.finfo(`[${context}] ${message}`)
+            }
+        }
+    }
+
+    /**
      * @description Logs a message to the console and to the file
      * @param {*} message Object to log
      */
     info (message) {
         this._onChange(`[${humanDate()}: INFO] ${message}`)
+    }
+
+    /**
+     * @description Logs a message only to the file
+     * @param {*} message Object to log
+     */
+    finfo (message) {
+        // Buffer output
+        this.logBuffer.push(`[${humanDate()}: INFO] ${message}`)
+        if (this.logBuffer.length > this.logBufferOverflow) {
+            this._writeToFile()
+        }
     }
 
     /**
@@ -180,7 +215,6 @@ class Logger {
     /**
      * @description Internal function to write the buffer to the file
      * @warning This function is only for internal use
-     * @param {*} line 
      */
     _writeToFile () {
         const self = this
@@ -195,6 +229,31 @@ class Logger {
                 fs.appendFile(file, `${linez}\n`, () => {})
             }
         })
+    }
+
+    /**
+     * @description Internal function to write the buffer synchronously to the file
+     * @warning This function is only for internal use
+     */
+    _writeToFileSync () {
+        const self = this
+        const linez = this.logBuffer.join('\n') // Concat all lines
+
+        this.logBuffer = [] // Reset buffer
+
+        this.files.forEach(file => {
+            fs.appendFileSync(file, `${linez}\n`)
+        })
+    }
+
+    /**
+     * @description Internal function to write the Buffer synchronously
+     * @warning This function is only for internal use
+     */
+    _writeBufferSync () {
+        if (this.logBuffer.length > 0) {
+            this._writeToFileSync()
+        }
     }
 
     /**
