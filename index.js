@@ -15,6 +15,7 @@ class Logger {
         }
 
         this.overflowTimeout = overflowTimeout
+        this.__console = console
         
         this.consoleOutput = consoleOutput
         this.synchronous = synchronous
@@ -70,6 +71,14 @@ class Logger {
             self.exitMsg(`Process ${process.pid} has been interrupted`)
             process.exit(0)
         })
+    }
+
+    /**
+     * Sets a custom console to use instead of the default console
+     * @param {Console} customConsole Custom console to use instead of the default console
+     */
+    setCustomConsole (customConsole) {
+        this.__console = customConsole
     }
 
     /**
@@ -157,7 +166,7 @@ class Logger {
      * @param {*} message Object to log
      */
     throw (error) {
-        console.error(error)
+        this.__console.error(error)
         this._onChange(`[${humanDate()}: ERROR] ${error.name}: ${error.message}`)
         // Add stacktrace as an extra line
         this._onChange(`[${humanDate()}: ERRORSTACK] ${error.stack}`)
@@ -168,7 +177,7 @@ class Logger {
      * @param {*} message Object to log
      */
     print (...messages) {
-        console.log(...messages)
+        this.__console.log(...messages)
         this.files.forEach(file => {
             fs.appendFileSync(file, `[${humanDate()}: CONSOLE OUTPUT] ${messages.join(' ')}\n`, () => {})
         })
@@ -179,7 +188,7 @@ class Logger {
      * @param {*} message Object to log
      */
     printr (...messages) {
-        console.log(...messages)
+        this.__console.log(...messages)
         this.files.forEach(file => {
             fs.appendFileSync(file, `${messages.join(' ')}\n`, () => {})
         })
@@ -202,7 +211,7 @@ class Logger {
      */
     _onChange (line) {
         if (this.consoleOutput) {
-            console.log(line)
+            this.__console.log(line)
         }
 
         // Buffer output
@@ -263,7 +272,7 @@ class Logger {
      */
     _onChangeSync (line) {
         if (this.consoleOutput) {
-            console.log(line)
+            this.__console.log(line)
         }
 
         this.files.forEach(file => {
