@@ -22,5 +22,8 @@
   "bugs": {
     "url": "https://github.com/greencoder001/downlogger/issues"
   },
-  "homepage": "https://github.com/greencoder001/downlogger#readme"
+  "homepage": "https://github.com/greencoder001/downlogger#readme",
+  "dependencies": {
+    "on-finished": "^2.4.1"
+  }
 }

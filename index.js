@@ -1,5 +1,6 @@
 const fs = require('fs')
 const humanDate = require('./human-date')
+const onFinished = require('on-finished')
 
 class Logger {
     /**
