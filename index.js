@@ -30,12 +30,68 @@ class Logger {
                 self.info('WebServer is listening now')
             },
             middleWare: (req, res, next) => {
-                self.inContext('WebServer').info(`${req.method} ${req.url} from ${req.headers['x-forwarded-for'] || req.connection.remoteAddress}`)
+                const startTimeStamp = new Date()
+
+                onFinished(res, () => {
+                    let ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress
+                    if (ip === '::1') ip = '127.0.0.1'
+                    const endTimeStamp = new Date()
+
+                    const payload = {
+                        url: req.url,
+                        fullUrl: `${req.headers.host}${req.url}`,
+                        method: req.method,
+                        headers: req.headers,
+                        body: req.body,
+                        params: req.params,
+                        query: req.query,
+                        timestamp: endTimeStamp,
+                        startTimeStamp: startTimeStamp,
+                        session: req.session,
+                        ip,
+                        response: {
+                            statusCode: res.statusCode,
+                            headers: res.getHeaders(),
+                            responseTimeInMs: endTimeStamp - startTimeStamp
+                        }
+                    }
+
+                    // GET /route - 200 - 0.000 FROM 127.0.0.1
+                    self.inContext('WebServer').info(`${payload.method} ${payload.url} - ${payload.response.statusCode} - ${payload.response.responseTimeInMs}ms FROM ${ip}`)
+                })
 
                 next()
             },
             onlyFileMiddleware: (req, res, next) => {
-                self.inFileContext('WebServer').info(`${req.method} ${req.url} from ${req.headers['x-forwarded-for'] || req.connection.remoteAddress}`)
+                const startTimeStamp = new Date()
+
+                onFinished(res, () => {
+                    let ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress
+                    if (ip === '::1') ip = '127.0.0.1'
+                    const endTimeStamp = new Date()
+
+                    const payload = {
+                        url: req.url,
+                        fullUrl: `${req.headers.host}${req.url}`,
+                        method: req.method,
+                        headers: req.headers,
+                        body: req.body,
+                        params: req.params,
+                        query: req.query,
+                        timestamp: endTimeStamp,
+                        startTimeStamp: startTimeStamp,
+                        session: req.session,
+                        ip,
+                        response: {
+                            statusCode: res.statusCode,
+                            headers: res.getHeaders(),
+                            responseTimeInMs: endTimeStamp - startTimeStamp
+                        }
+                    }
+
+                    // GET /route - 200 - 0.000 FROM 127.0.0.1
+                    self.inFileContext('WebServer').info(`${payload.method} ${payload.url} - ${payload.response.statusCode} - ${payload.response.responseTimeInMs}ms FROM ${ip}`)
+                })
 
                 next()
             }
