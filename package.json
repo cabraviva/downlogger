@@ -2,8 +2,11 @@
   "name": "downlogger",
   "version": "1.6.1",
   "description": "A simple logger",
-  "main": "index.js",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "scripts": {
+    "build": "tsc",
+    "prepare": "npm run build",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
@@ -25,5 +28,10 @@
   "homepage": "https://github.com/greencoder001/downlogger#readme",
   "dependencies": {
     "on-finished": "^2.4.1"
+  },
+  "devDependencies": {
+    "@types/node": "^25.0.9",
+    "@types/on-finished": "^2.3.5",
+    "typescript": "^5.9.3"
   }
 }
