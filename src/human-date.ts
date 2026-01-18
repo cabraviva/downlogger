@@ -1,3 +1,4 @@
 export default (): string => {
-    return new Date().toLocaleDateString() + ' ' + new Date().toLocaleTimeString();
+    const now = new Date();
+    return now.toLocaleDateString() + ' ' + now.toLocaleTimeString();
 };

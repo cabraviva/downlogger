@@ -9,6 +9,30 @@ interface LoggerContext {
 
 type OverflowTimeout = number | 'TIMEOUT_3_MINUTES';
 
+// Express-like middleware types (avoiding express dependency)
+// Using permissive types to avoid requiring HTTP/Express dependencies
+interface Request {
+    url: string;
+    method: string;
+    headers: any;
+    body?: any;
+    params?: any;
+    query?: any;
+    session?: any;
+    connection: {
+        remoteAddress: string;
+    };
+}
+
+interface Response {
+    statusCode: number;
+    getHeaders(): any;
+}
+
+type NextFunction = () => void;
+// Using 'any' for middleware params to maintain compatibility without requiring Express types
+type MiddlewareFunction = (req: any, res: any, next: any) => void;
+
 export default class Logger {
     private overflowTimeout: number;
     private __console: Console;
@@ -19,8 +43,8 @@ export default class Logger {
     private logBuffer: string[];
     public presets: {
         serverListening: (port: number) => void;
-        middleWare: (req: any, res: any, next: any) => void;
-        onlyFileMiddleware: (req: any, res: any, next: any) => void;
+        middleWare: MiddlewareFunction;
+        onlyFileMiddleware: MiddlewareFunction;
     };
 
     /**
@@ -124,7 +148,7 @@ export default class Logger {
 
         setInterval(() => {
             this._writeToFile();
-        }, overflowTimeout as number);
+        }, this.overflowTimeout);
 
         process.on('beforeExit', (code: number) => {
             this._writeBufferSync();
