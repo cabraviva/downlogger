@@ -7,7 +7,7 @@
   "scripts": {
     "build": "tsc",
     "watch": "tsc --watch",
-    "prepare": "npm run build",
+    "prepare": "pnpm run build",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
@@ -33,6 +33,7 @@
   "devDependencies": {
     "@types/node": "^25.0.9",
     "@types/on-finished": "^2.3.5",
+    "express": "^5.2.1",
     "typescript": "^5.9.3"
   }
 }

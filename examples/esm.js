@@ -1,4 +1,4 @@
-const DownLogger = require('../dist/index.js')
+import DownLogger from '../dist/index.js'
 const Logger = new DownLogger()
 
 Logger.pipe('./my.minimal.log')
